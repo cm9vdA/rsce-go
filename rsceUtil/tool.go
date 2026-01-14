@@ -10,7 +10,7 @@ package RSCEUtil
 
 import (
 	"encoding/binary"
-	"io/ioutil"
+	"io"
 
 	"math"
 	"os"
@@ -147,34 +147,31 @@ func GenerateRSCE(contentFilePaths []string, outputFile string) {
 	for _, contentFilePath := range contentFilePaths {
 		//open file
 		file, err := os.Open(contentFilePath)
-		defer file.Close()
 		if err != nil {
 			log.Error("Failed to open file:", contentFilePath, " error:\"", err.Error(), "\" Skip this file")
 		} else {
+			defer file.Close()
 			//read file
 			var fileBuffer []byte
+			fileBuffer, err = io.ReadAll(file)
 			if err == nil {
-				fileBuffer, err = ioutil.ReadAll(file)
-				if err == nil {
-					//parse file name without path
-					fileName := path.Base(contentFilePath)
-					//calculate file size / 512
-					fileSize := uint32(len(fileBuffer))
-					//append all file buffer to file buffer
-					//check if file is multiple of 512
-					if fileSize%512 != 0 {
-						//add zero bytes
-						fileBuffer = append(fileBuffer, make([]byte, 512-fileSize%512)...)
-					}
-
-					//append file entry to file entries
-					allFileBuffer = append(allFileBuffer, fileBuffer...)
-					fileEntries = append(fileEntries, fileEntry{
-						FileName: fileName,
-						FileSize: fileSize,
-					})
+				//parse file name without path
+				fileName := path.Base(contentFilePath)
+				//calculate file size / 512
+				fileSize := uint32(len(fileBuffer))
+				//append all file buffer to file buffer
+				//check if file is multiple of 512
+				if fileSize%512 != 0 {
+					//add zero bytes
+					fileBuffer = append(fileBuffer, make([]byte, 512-fileSize%512)...)
 				}
 
+				//append file entry to file entries
+				allFileBuffer = append(allFileBuffer, fileBuffer...)
+				fileEntries = append(fileEntries, fileEntry{
+					FileName: fileName,
+					FileSize: fileSize,
+				})
 			}
 
 		}
